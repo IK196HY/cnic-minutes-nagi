@@ -1,0 +1,2300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNIC 議事録支援システム - 凪</title>
+    <!-- Google Fonts Outfit & Noto Sans JP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PWA (疑似アプリ) 設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#d97706">
+    
+    <!-- iOS (iPhone) 疑似アプリ最適化 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="凪議事録">
+    
+    <style>
+        :root {
+            /* 温かみとコントラストを両立したウォームアイボリー・アンバーパレット */
+            --bg-primary: #f7f5f0; /* 温かみのある非常に淡いサンドアイボリー */
+            --bg-secondary: #ffffff; /* パネル・カード背景の純白 */
+            --bg-tertiary: #efece6; /* 少し暗いウォームグレー */
+            --text-primary: #2d2924; /* コントラストを高めた濃いブラウンチャコール */
+            --text-secondary: #6e675f; /* 読みやすい中明度のウォームグレー */
+            --text-muted: #a39c94; /* 補助的な薄いウォームグレー */
+            --accent-color: #d97706; /* 親しみやすく視認性の高いアンバーオレンジ */
+            --accent-hover: #b45309;
+            --accent-light: rgba(217, 119, 6, 0.07);
+            --accent-border: rgba(217, 119, 6, 0.25);
+            --accent-success: #16a34a;
+            --accent-success-light: rgba(22, 163, 74, 0.08);
+            --accent-warning: #ea580c;
+            --accent-warning-light: rgba(234, 88, 12, 0.08);
+            --accent-danger: #dc2626;
+            --accent-danger-light: rgba(220, 38, 38, 0.08);
+            --border-color: #e6e2da; /* 白背景カードを際立たせるためのやや濃い目の暖色ボーダー */
+            --border-focus: #b45309;
+            --shadow-sm: 0 2px 4px rgba(109, 90, 70, 0.04), 0 1px 2px rgba(109, 90, 70, 0.06);
+            --shadow-md: 0 10px 20px -5px rgba(109, 90, 70, 0.1), 0 6px 12px -6px rgba(109, 90, 70, 0.08);
+            --shadow-lg: 0 20px 25px -5px rgba(109, 90, 70, 0.15), 0 10px 10px -5px rgba(109, 90, 70, 0.05);
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+            --radius-full: 9999px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.85rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(109, 90, 70, 0.02);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .logo-icon {
+            width: 2.25rem;
+            height: 2.25rem;
+            background: linear-gradient(135deg, var(--accent-color), #f97316);
+            border-radius: 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
+        }
+
+        h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .badge {
+            background-color: var(--accent-light);
+            border: 1px solid var(--accent-border);
+            color: var(--accent-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .container {
+            max-width: 1440px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.5rem;
+            flex-grow: 1;
+            height: calc(100vh - 65px);
+            overflow: hidden;
+        }
+
+        @media (max-height: 850px) {
+            .container {
+                height: auto;
+                min-height: calc(100vh - 65px);
+                overflow: visible;
+            }
+            .main-content {
+                height: auto;
+                overflow: visible;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+                overflow: auto;
+                padding: 1rem;
+            }
+            /* スマホ/タブレットでは「会議中に使うメインエリア」を上に、
+               「会議前に触る準備パネル(辞書・メンバー)」を下に回す */
+            .main-content { order: 1; }
+            .sidebar { order: 2; }
+        }
+
+        /* サイドバー */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            overflow-y: auto;
+            padding-right: 0.25rem;
+        }
+
+        .panel {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s;
+        }
+
+        .panel:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--text-muted);
+        }
+
+        .panel-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        /* 辞書テーブル */
+        .dict-table-container {
+            max-height: 220px;
+            overflow-y: auto;
+            margin-bottom: 0.85rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background-color: var(--bg-primary);
+        }
+
+        .dict-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            text-align: left;
+        }
+
+        .dict-table th, .dict-table td {
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .dict-table th {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        .dict-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .dict-table tr:hover {
+            background-color: rgba(109, 90, 70, 0.03);
+        }
+
+        .dict-input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+        }
+
+        input, select, textarea {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent-color);
+            background-color: var(--bg-secondary);
+            box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.08);
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 0.5rem 1.25rem;
+            box-shadow: 0 2px 6px rgba(217, 119, 6, 0.15);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-tertiary);
+            border-color: var(--text-muted);
+        }
+
+        .btn-danger {
+            background-color: var(--accent-danger-light);
+            border: 1px solid rgba(220, 38, 38, 0.15);
+            color: var(--accent-danger);
+            padding: 0.35rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-danger:hover {
+            background-color: var(--accent-danger);
+            color: white;
+            box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+        }
+
+        /* メンバーリスト */
+        .member-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .member-tag {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            padding: 0.35rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .member-tag:hover {
+            background-color: var(--border-color);
+        }
+
+        .member-tag .remove {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1;
+            margin-left: 0.15rem;
+        }
+
+        .member-tag .remove:hover {
+            color: var(--accent-danger);
+        }
+
+        /* メインエリア */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            height: 100%;
+            min-height: 0; /* Grid内のFlex縮みバグ防止 */
+            overflow: hidden;
+        }
+
+        /* コントロールパネル */
+        .control-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 0.65rem 1.25rem;
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0; /* 高さを縮ませない */
+        }
+
+        .rec-controls {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .btn-rec {
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: var(--radius-full);
+            background: linear-gradient(135deg, var(--accent-danger), #f87171);
+            color: white;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+            font-size: 1.2rem;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .btn-rec:hover {
+            transform: scale(1.04);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+        }
+
+        .btn-rec:active {
+            transform: scale(0.98);
+        }
+
+        .btn-rec.recording {
+            background: linear-gradient(135deg, var(--accent-success), #34d399);
+            box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3);
+            animation: pulse 2.2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3); }
+            50% { transform: scale(1.04); box-shadow: 0 6px 25px rgba(22, 163, 74, 0.45); }
+            100% { transform: scale(1); box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3); }
+        }
+
+        .timer-display {
+            font-family: 'Outfit', monospace;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+        }
+
+        .status-dot.active {
+            background-color: var(--accent-success);
+            box-shadow: 0 0 8px var(--accent-success);
+            animation: blink 1.2s infinite alternate;
+        }
+
+        /* 録音波形風の動的インジケータ（ナギ署名） */
+        .audio-wave {
+            display: none;
+            align-items: center;
+            gap: 3px;
+            height: 16px;
+            margin-left: 0.5rem;
+        }
+
+        .audio-wave.active {
+            display: inline-flex;
+        }
+
+        .audio-bar-elem {
+            width: 2px;
+            height: 6px;
+            background-color: var(--accent-success);
+            border-radius: var(--radius-full);
+            animation: waveBounce 0.8s infinite alternate;
+        }
+        .audio-bar-elem:nth-child(2) { animation-delay: 0.15s; height: 12px; }
+        .audio-bar-elem:nth-child(3) { animation-delay: 0.3s; height: 8px; }
+        .audio-bar-elem:nth-child(4) { animation-delay: 0.45s; height: 14px; }
+        .audio-bar-elem:nth-child(5) { animation-delay: 0.1s; height: 5px; }
+
+        @keyframes waveBounce {
+            from { transform: scaleY(0.4); }
+            to { transform: scaleY(1.3); }
+        }
+
+        @keyframes blink {
+            from { opacity: 0.4; }
+            to { opacity: 1; }
+        }
+
+        /* タイムラインレイアウト (2カラム) */
+        .timeline-layout {
+            display: grid;
+            grid-template-columns: 1fr 180px; /* 右側に180pxの話者パネル */
+            gap: 1rem;
+            flex-grow: 1;
+            min-height: 280px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .timeline-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr; /* 話者パネルは画面下部に固定するのでグリッドから外す */
+            }
+        }
+
+        .quick-speaker-panel {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1rem 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-sm);
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .quick-speaker-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.4rem;
+            text-align: center;
+            letter-spacing: 0.05em;
+        }
+
+        .quick-speaker-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .btn-quick-speaker {
+            width: 100%;
+            padding: 0.65rem 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            justify-content: center;
+            transition: all 0.2s ease;
+            overflow: hidden; /* カラーボーダーの角丸はみ出しを防止 */
+            position: relative;
+        }
+
+        .btn-quick-speaker:hover {
+            background-color: var(--bg-tertiary);
+            border-color: var(--text-muted);
+        }
+
+        .btn-quick-speaker.active {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(217, 119, 6, 0.2);
+            transform: scale(1.02);
+        }
+
+        /* タイムライン */
+        .timeline-container {
+            flex-grow: 1;
+            flex-shrink: 1;
+            min-height: 280px; /* タイムラインの領域を強固に死守 */
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            background-color: var(--bg-secondary);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+        }
+
+        .timeline-feed {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            width: 100%;
+            height: 100%;
+        }
+
+        .timeline-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: auto;
+            color: var(--text-secondary);
+            text-align: center;
+            gap: 1rem;
+            padding: 2rem 1rem;
+        }
+
+        .timeline-empty svg {
+            width: 3.5rem;
+            height: 3.5rem;
+            flex-shrink: 0;
+            stroke: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        /* タイムライン上の会話ブロック */
+        .block-item {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            /* 各話者ごとの左ボーダー色（JSで動的に当てる）のベース定義 */
+            border-left: 4px solid var(--text-muted); 
+            border-radius: 0.375rem var(--radius-md) var(--radius-md) 0.375rem;
+            padding: 1rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            position: relative;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(109, 90, 70, 0.04);
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .block-item:hover {
+            border-color: var(--text-muted);
+            box-shadow: 0 4px 15px rgba(109, 90, 70, 0.08);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .block-item.interim {
+            border-style: dashed;
+            opacity: 0.75;
+            background-color: rgba(247, 245, 240, 0.5);
+        }
+
+        .block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .block-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .block-speaker-badge {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .block-speaker-badge:hover {
+            background-color: var(--accent-light);
+            border-color: var(--accent-border);
+            color: var(--accent-color);
+        }
+
+        .btn-audio-jump {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            cursor: pointer;
+            padding: 0.15rem 0.4rem;
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .btn-audio-jump:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .block-actions {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .action-icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-icon-btn:hover {
+            color: var(--accent-danger);
+            background-color: var(--accent-danger-light);
+        }
+
+        .block-body {
+            font-size: 0.95rem;
+            font-weight: 500; /* 太さを持たせて視認性向上 */
+            color: var(--text-primary);
+            outline: none;
+            min-height: 1.5rem;
+            white-space: pre-wrap;
+            border-bottom: 1px solid transparent;
+            padding-bottom: 0.1rem;
+        }
+
+        .block-body:focus {
+            border-color: var(--accent-color);
+        }
+
+        /* 補正・学習用チップ */
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.25rem;
+        }
+
+        .learn-chip {
+            background-color: var(--accent-success-light);
+            border: 1px dashed rgba(22, 163, 74, 0.3);
+            color: var(--accent-success);
+            padding: 0.25rem 0.6rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.725rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 0.15rem;
+            align-self: flex-start;
+            transition: all 0.2s;
+        }
+
+        .learn-chip:hover {
+            background-color: rgba(22, 163, 74, 0.15);
+            transform: translateY(-0.5px);
+        }
+
+        /* バックアップ再生バー */
+        .audio-bar {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 0.65rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .audio-player-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        audio {
+            width: 100%;
+            max-width: 100%;
+            height: 2rem;
+            border-radius: var(--radius-md);
+            outline: none;
+            display: block;
+        }
+
+        /* 議事録出力エリア */
+        .preview-panel {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            height: 140px; /* コピペ用に高さをコンパクトに固定 */
+            flex-shrink: 0; /* 高さを縮ませない */
+            box-shadow: var(--shadow-sm);
+        }
+
+        .preview-text {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            overflow-y: auto;
+            flex-grow: 1;
+            font-family: 'Outfit', monospace;
+            white-space: pre-wrap;
+            min-height: 0;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+
+        /* トースト通知 */
+        .toast {
+            position: fixed;
+            bottom: 2.5rem;
+            right: 2.5rem;
+            background-color: #2d2924;
+            color: white;
+            padding: 0.85rem 1.75rem;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(120px);
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1000;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* モーダル */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(45, 41, 36, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 400px;
+            padding: 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            transform: scale(0.95);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal.open .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .modal-list {
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .modal-list-item {
+            padding: 0.6rem 0.85rem;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-primary);
+        }
+
+        .modal-list-item:hover {
+            border-color: var(--accent-color);
+            background-color: var(--accent-light);
+            color: var(--accent-color);
+        }
+
+        /* スクロールバー装飾 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: var(--radius-full);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* =========================================================
+           スマホ用の上書き（★基本ルールの後に置いて確実に勝たせる★）
+           会議中に一番使う「話者切り替え」を画面下部の親指ゾーンに固定する
+           ========================================================= */
+        @media (max-width: 768px) {
+            header { padding: 0.75rem 1rem; }
+
+            .quick-speaker-panel {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 95;
+                flex-direction: row;
+                align-items: stretch;
+                gap: 0.5rem;
+                max-height: none;
+                border-radius: 0;
+                border: none;
+                border-top: 2px solid var(--accent-border);
+                box-shadow: 0 -6px 16px rgba(109, 90, 70, 0.14);
+                background-color: rgba(255, 255, 255, 0.97);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 0.55rem 0.75rem;
+                padding-bottom: calc(0.55rem + env(safe-area-inset-bottom));
+            }
+
+            .quick-speaker-title {
+                display: flex;
+                align-items: center;
+                text-align: left;
+                border-bottom: none;
+                border-right: 1px solid var(--border-color);
+                padding: 0 0.6rem 0 0.15rem;
+                margin: 0.15rem 0;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .quick-speaker-list {
+                flex-direction: row;
+                gap: 0.5rem;
+                flex-grow: 1;
+            }
+
+            .btn-quick-speaker {
+                width: auto;
+                white-space: nowrap;
+                padding: 0.65rem 1.1rem;
+                flex-shrink: 0;
+            }
+
+            /* 固定バーに最終行が隠れないよう、下に余白を確保 */
+            .container { padding-bottom: 5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <div class="logo-icon">N</div>
+            <div>
+                <h1>CNIC 議事録支援システム</h1>
+                <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 600; font-family: 'Outfit';">凪 - Nagi AI Assistant</span>
+            </div>
+        </div>
+        <div class="status-indicator">
+            <span class="badge" title="議事録テキスト・辞書・メンバー設定はこの端末内(localStorage)にのみ保存されます。音声認識はブラウザ提供のクラウド処理を使います。">完全無料 / データは端末内保存</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 左サイドバー: 辞書とメンバー -->
+        <div class="sidebar">
+            <!-- 辞書パネル -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>医療用語 補正辞書</span>
+                    <span style="font-size: 0.7rem; font-weight: 600; color: var(--accent-color); background-color: var(--accent-light); border: 1px solid var(--accent-border); padding: 0.15rem 0.5rem; border-radius: var(--radius-sm);" id="dict-count">0件</span>
+                </div>
+                
+                <div class="dict-table-container">
+                    <table class="dict-table">
+                        <thead>
+                            <tr>
+                                <th>誤認識語 (元)</th>
+                                <th>補正語 (正式)</th>
+                                <th style="width: 45px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="dict-list">
+                            <!-- 辞書アイテム -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="dict-input-group">
+                    <input type="text" id="dict-raw" placeholder="誤認識語 (例: 表情要望)" title="音声入力された時の間違った言葉">
+                    <input type="text" id="dict-refined" placeholder="補正語 (例: 標準予防策)" title="正しい専門用語">
+                    <button class="btn-primary" id="btn-add-dict" style="padding: 0.5rem;" title="辞書に登録">追加</button>
+                </div>
+            </div>
+
+            <!-- 発言者メンバーパネル -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>会議参加者メンバー</span>
+                </div>
+                <div class="member-tags" id="member-list">
+                    <!-- メンバースタンプ -->
+                </div>
+                <div class="dict-input-group" style="grid-template-columns: 1fr auto;">
+                    <input type="text" id="member-name" placeholder="メンバー名 (例: Aさん)">
+                    <button class="btn-secondary" id="btn-add-member" style="padding: 0.5rem 0.75rem;">追加</button>
+                </div>
+            </div>
+
+            <!-- 操作説明 & ガイド -->
+            <div class="panel" style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6;">
+                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.3rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    凪式・使い方ガイド
+                </h4>
+                <ol style="margin-left: 1rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                    <li>会議前に「参加者メンバー」やよく使う「辞書」を設定します。</li>
+                    <li><strong>[●] 録音ボタン</strong>を押すと文字起こしを開始します。</li>
+                    <li>発言が確定すると補正辞書が自動適用されます。</li>
+                    <li>テキストを直接修正すると、<strong>「誤認識➔修正語」をワンクリック登録できるチップ</strong>が出現します。</li>
+                    <li>録音停止後、各ブロックの <strong>🔊 [分:秒]</strong> をクリックするとその発話の冒頭から音声をピンポイント再生できます。</li>
+                </ol>
+                <a href="マニュアル.html" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.85rem; color: var(--accent-color); font-weight: 700; text-decoration: none; font-size: 0.8rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    詳しい使い方マニュアルを開く
+                </a>
+            </div>
+        </div>
+
+        <!-- 右メインコンテンツ: タイムラインとエディタ -->
+        <div class="main-content">
+            <!-- 録音・コントロール -->
+            <div class="control-bar">
+                <div class="rec-controls">
+                    <button class="btn-rec" id="btn-rec" title="録音開始/停止">
+                        <!-- マイクSVGアイコン -->
+                        <svg id="svg-mic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; fill:white;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        <!-- 停止SVGアイコン（初期は非表示） -->
+                        <svg id="svg-stop" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none; vertical-align:middle; fill:white;"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                    </button>
+                    <div>
+                        <div class="timer-display" id="timer">00:00</div>
+                        <div class="status-indicator" style="margin-top: 0.15rem;">
+                            <div class="status-dot" id="status-dot"></div>
+                            <span id="status-text">待機中</span>
+                            <!-- 波形表示用インジケータ -->
+                            <div class="audio-wave" id="audio-wave">
+                                <div class="audio-bar-elem"></div>
+                                <div class="audio-bar-elem"></div>
+                                <div class="audio-bar-elem"></div>
+                                <div class="audio-bar-elem"></div>
+                                <div class="audio-bar-elem"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn-secondary" id="btn-import-settings" title="辞書/設定のインポート/エクスポート">設定I/O</button>
+                    <button class="btn-danger" id="btn-clear-all" style="padding: 0.5rem 1rem;">全消去</button>
+                </div>
+            </div>
+
+            <!-- タイムラインレイアウト（会話と出席者クイック切り替えの2カラム） -->
+            <div class="timeline-layout">
+                <!-- 左カラム：文字起こしフィード -->
+                <div class="timeline-container">
+                    <div class="timeline-feed" id="timeline"></div>
+                    <div class="timeline-empty" id="timeline-empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                        </svg>
+                        <p style="font-weight: 700; font-size: 1.05rem;">会議の録音を開始してください</p>
+                        <p style="font-size: 0.8rem; max-width: 340px; color: var(--text-muted);">ブラウザの音声認識で会話が時系列に表示されます。<br>※音声認識はブラウザ提供のクラウド処理を利用します。会議では患者名・個人名など具体的な個人情報の発話は避けてください。</p>
+                    </div>
+                </div>
+                
+                <!-- 右カラム：出席者クイック切り替えパネル -->
+                <div class="quick-speaker-panel" id="quick-speaker-panel">
+                    <div class="quick-speaker-title">発言中の話者</div>
+                    <div class="quick-speaker-list" id="quick-speaker-list">
+                        <!-- JS実装までは仮の表示 -->
+                        <div style="font-size: 0.725rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">出席者がいません</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- バックアップ再生バー -->
+            <div class="audio-bar">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: 0.3rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    音声バックアップ
+                </span>
+                <div class="audio-player-wrapper">
+                    <audio id="audio-player" controls></audio>
+                </div>
+            </div>
+
+            <!-- 議事録出力エリア -->
+            <div class="preview-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary);">確定議事録テキスト (Markdown形式)</span>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button class="btn-primary" id="btn-copy-ai" style="font-size: 0.75rem; padding: 0.4rem 0.9rem; background-color: var(--accent-success);" title="Claudeに貼るだけで正式な議事録に清書できるプロンプト付きでコピー">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="fill:none;"><path d="M12 3l1.9 4.3L18 9l-4.1 1.7L12 15l-1.9-4.3L6 9l4.1-1.7L12 3z"/><path d="M5 17l.9 2L8 20l-2.1.9L5 23l-.9-2.1L2 20l2.1-1L5 17z"/></svg>
+                            AI清書用
+                        </button>
+                        <button class="btn-primary" id="btn-copy" style="font-size: 0.75rem; padding: 0.4rem 0.9rem;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="fill:none;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                            コピー
+                        </button>
+                    </div>
+                </div>
+                <div class="preview-text" id="preview-output">※録音終了後、または文字起こしが行われると、ここに整形された議事録用テキストがリアルタイムで作成されます。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div class="toast" id="toast">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="fill:none;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span id="toast-text">コピーしました</span>
+    </div>
+
+    <!-- 話者選択用モーダル -->
+    <div class="modal" id="speaker-modal">
+        <div class="modal-content">
+            <h3 style="font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.65rem;">発言者の選択</h3>
+            <div class="modal-list" id="modal-speaker-list">
+                <!-- 話者選択肢 -->
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" id="btn-close-modal">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // デバッグ用エラー表示ハンドラー
+        window.onerror = function(message, source, lineno, colno, error) {
+            const errDiv = document.createElement('div');
+            errDiv.style.position = 'fixed';
+            errDiv.style.top = '10px';
+            errDiv.style.left = '10px';
+            errDiv.style.right = '10px';
+            errDiv.style.backgroundColor = '#fee2e2';
+            errDiv.style.border = '2px solid #dc2626';
+            errDiv.style.color = '#dc2626';
+            errDiv.style.padding = '15px';
+            errDiv.style.borderRadius = '8px';
+            errDiv.style.zIndex = '999999';
+            errDiv.style.fontFamily = 'monospace';
+            errDiv.style.fontSize = '12px';
+            errDiv.style.lineHeight = '1.5';
+            errDiv.innerHTML = `<strong>JavaScriptエラーが発生しました:</strong><br>${message}<br>場所: ${source} (行番号: ${lineno})`;
+            document.body.appendChild(errDiv);
+            return false;
+        };
+
+        // --- アプリケーションの状態管理 ---
+        let state = {
+            isRecording: false,
+            startTime: null,
+            timerInterval: null,
+            recognition: null,
+            mediaRecorder: null,
+            audioChunks: [],
+            audioUrl: null,
+            timeline: [], // { id, speaker, rawText, refinedText, timeOffset, timestamp }
+            dictionary: {}, // raw -> refined
+            members: ["いくろうさん", "Aさん", "Bさん"],
+            attendance: {}, // { "メンバー名": true(出席)/false(欠席) }
+            currentSpeaker: "いくろうさん",
+            activeModalBlockId: null,
+            // 「今まさに続いている発話」の話者と開始時刻をロックする作業用
+            utteranceSpeaker: null,
+            utteranceStartOffset: null,
+            currentTake: 0,       // 録音区間ID（再録音のたびに増える）
+            wakeLock: null
+        };
+
+        // デフォルト辞書（初期データ）
+        // 院内感染対策委員会向けの頻出語シード。左=音声認識が間違えやすい語／読み、右=正式表記。
+        // ※実際の会議で気づいた誤変換は、タイムラインを直すと出る緑チップから随時追加できます。
+        const DEFAULT_DICTIONARY = {
+            // --- 予防策 ---
+            "表情要望": "標準予防策",
+            "標準予防": "標準予防策",
+            "ひょうじゅんよぼう": "標準予防策",
+            "標準予防作": "標準予防策",
+            "けいろべつ": "経路別予防策",
+            "経路別予防": "経路別予防策",
+            "接触予防": "接触予防策",
+            "せっしょくよぼう": "接触予防策",
+            "飛沫予防": "飛沫予防策",
+            "ひまつよぼう": "飛沫予防策",
+            "空気予防": "空気予防策",
+            "くうきよぼう": "空気予防策",
+
+            // --- 手指衛生・消毒 ---
+            "てゆびえいせい": "手指衛生",
+            "しゅしえいせい": "手指衛生",
+            "しゅししょうどく": "手指消毒",
+            "さっしき": "擦式アルコール手指消毒薬",
+            "擦式": "擦式アルコール手指消毒薬",
+            "じゅんしゅりつ": "遵守率",
+            "順守率": "遵守率",
+            "次亜塩素酸": "次亜塩素酸ナトリウム",
+            "じあえんそさん": "次亜塩素酸ナトリウム",
+
+            // --- 個人防護具(PPE) ---
+            "ぴーぴーいー": "PPE",
+            "こじんぼうごぐ": "個人防護具",
+            "さーじかるますく": "サージカルマスク",
+            "エヌ95": "N95マスク",
+            "えぬきゅうじゅうご": "N95マスク",
+            "ふぇいすしーるど": "フェイスシールド",
+
+            // --- 微生物・耐性菌 ---
+            "えむあーるえー": "MRSA",
+            "エムアールエー": "MRSA",
+            "エムアールエスエー": "MRSA",
+            "えむあーるえすえー": "MRSA",
+            "いーえすびーえる": "ESBL",
+            "しーあーるいー": "CRE",
+            "ぶいあーるいー": "VRE",
+            "りょくのうきん": "緑膿菌",
+            "たざいたいせいりょくのうきん": "多剤耐性緑膿菌(MDRP)",
+            "あしねとばくたー": "アシネトバクター",
+            "クロストリジウムディフィシル": "クロストリジオイデス・ディフィシル",
+            "しーでぃーあい": "CDI",
+            "のろ": "ノロウイルス",
+            "のろういるす": "ノロウイルス",
+            "けっかく": "結核",
+            "はいきん": "排菌",
+
+            // --- サーベイランス・デバイス関連感染 ---
+            "さーべいらんす": "サーベイランス",
+            "かうてぃ": "CAUTI",
+            "しーらぶしー": "CLABSI",
+            "えすえすあい": "SSI",
+            "ぶいえーぴー": "VAP",
+            "にょうどうかてーてる": "尿道カテーテル",
+            "ちゅうしんじょうみゃくかてーてる": "中心静脈カテーテル",
+            "けっぱい": "血液培養",
+            "血培": "血液培養",
+
+            // --- 体制・運用 ---
+            "あいしーてぃー": "ICT",
+            "えーえすてぃー": "AST",
+            "こうきんやく": "抗菌薬",
+            "コウキンヤク": "抗菌薬",
+            "抗菌薬適正": "抗菌薬適正使用",
+            "あうとぶれいく": "アウトブレイク",
+            "ぞーにんぐ": "ゾーニング",
+            "いんあつしつ": "陰圧室",
+            "はりさし": "針刺し",
+            "はりさしせっそう": "針刺し切創",
+            "ばくろ": "曝露",
+            "はいしゅつぶ": "排出物",
+            "かんせんたいさくいいんかい": "感染対策委員会"
+        };
+
+        // 話者ごとのタイムライン左端ボーダーの色マッピング（暖色・視認性重視）
+        const SPEAKER_COLORS = {
+            "いくろうさん": "#d97706", // アンバーオレンジ（主）
+            "Aさん": "#ea580c",        // オレンジ
+            "Bさん": "#3b82f6",        // 視認性のためのブルー
+            "師長": "#ec4899"          // ピンク
+        };
+
+        // 未登録メンバーにカラーを動的割り当て
+        function getSpeakerColor(name) {
+            if (SPEAKER_COLORS[name]) return SPEAKER_COLORS[name];
+            // 暖色系をメインにしたカラープール
+            const colors = ["#f97316", "#e11d48", "#ea580c", "#4f46e5", "#0ea5e9", "#16a34a", "#db2777"];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        // --- DOM要素 ---
+        const btnRec = document.getElementById('btn-rec');
+        const svgMic = document.getElementById('svg-mic');
+        const svgStop = document.getElementById('svg-stop');
+        const audioWave = document.getElementById('audio-wave');
+        
+        const timerDisplay = document.getElementById('timer');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const timeline = document.getElementById('timeline');
+        const timelineEmpty = document.getElementById('timeline-empty');
+        const audioPlayer = document.getElementById('audio-player');
+        const previewOutput = document.getElementById('preview-output');
+        const btnCopy = document.getElementById('btn-copy');
+        const toast = document.getElementById('toast');
+        const toastText = document.getElementById('toast-text');
+        
+        const dictList = document.getElementById('dict-list');
+        const dictRaw = document.getElementById('dict-raw');
+        const dictRefined = document.getElementById('dict-refined');
+        const btnAddDict = document.getElementById('btn-add-dict');
+        const dictCount = document.getElementById('dict-count');
+        
+        const memberList = document.getElementById('member-list');
+        const memberName = document.getElementById('member-name');
+        const btnAddMember = document.getElementById('btn-add-member');
+        
+        const speakerModal = document.getElementById('speaker-modal');
+        const modalSpeakerList = document.getElementById('modal-speaker-list');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnClearAll = document.getElementById('btn-clear-all');
+        const btnImportSettings = document.getElementById('btn-import-settings');
+
+        // --- 初期化 ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadLocalStorage();
+            renderDictionary();
+            renderMembers();
+            initSpeechRecognition();
+        });
+
+        // --- 設定の永続化 (LocalStorage) ---
+        // 標準辞書の版数。DEFAULT_DICTIONARYに語を足したらこの番号を上げると、
+        // 既存ユーザーにも「足りない標準語だけ」が1回マージされる（ユーザーの追加・削除は保持）。
+        const DEFAULT_DICT_VERSION = 3;
+
+        function loadLocalStorage() {
+            const savedDict = localStorage.getItem('cnic_dict');
+            if (savedDict) {
+                state.dictionary = JSON.parse(savedDict);
+            } else {
+                state.dictionary = { ...DEFAULT_DICTIONARY };
+                saveDictionary();
+            }
+
+            // 標準辞書のアップグレード：保存済みの版が古ければ、
+            // 既存の辞書に「まだ無い標準語だけ」を追加する（既存の語は上書きしない）。
+            const savedDictVer = parseInt(localStorage.getItem('cnic_dict_version') || '0', 10);
+            if (savedDictVer < DEFAULT_DICT_VERSION) {
+                let added = 0;
+                for (const [raw, refined] of Object.entries(DEFAULT_DICTIONARY)) {
+                    if (!(raw in state.dictionary)) {
+                        state.dictionary[raw] = refined;
+                        added++;
+                    }
+                }
+                // 「誤認識語＝補正語」の意味のないエントリを掃除する（過去版の名残・入力ミス対策）。
+                // 正式語は補正エンジン側で自動保護するので、辞書に自分自身を登録する必要はない。
+                let removed = 0;
+                for (const key of Object.keys(state.dictionary)) {
+                    if (key === state.dictionary[key]) {
+                        delete state.dictionary[key];
+                        removed++;
+                    }
+                }
+                localStorage.setItem('cnic_dict_version', String(DEFAULT_DICT_VERSION));
+                if (added > 0 || removed > 0) {
+                    saveDictionary();
+                    const parts = [];
+                    if (added > 0) parts.push(`${added}語を追加`);
+                    if (removed > 0) parts.push(`重複${removed}語を整理`);
+                    setTimeout(() => showToast(`医療用語辞書を更新しました（${parts.join('・')}）`), 600);
+                }
+            }
+
+            const savedMembers = localStorage.getItem('cnic_members');
+            if (savedMembers) {
+                state.members = JSON.parse(savedMembers);
+            }
+
+            // 出席状況のロード
+            const savedAttendance = localStorage.getItem('cnic_attendance');
+            if (savedAttendance) {
+                try {
+                    state.attendance = JSON.parse(savedAttendance);
+                } catch(e) {
+                    state.attendance = {};
+                }
+            } else {
+                state.attendance = {};
+            }
+            
+            // 出席状況の安全補正
+            if (!state.attendance || typeof state.attendance !== 'object') {
+                state.attendance = {};
+            }
+            state.members.forEach(name => {
+                if (state.attendance[name] === undefined) {
+                    state.attendance[name] = true;
+                }
+            });
+            saveAttendance();
+
+            const savedTimeline = localStorage.getItem('cnic_timeline');
+            if (savedTimeline) {
+                state.timeline = JSON.parse(savedTimeline);
+                renderTimeline();
+                updateMarkdownPreview();
+            } else {
+                checkTimelineEmpty();
+            }
+        }
+
+        function saveDictionary() {
+            localStorage.setItem('cnic_dict', JSON.stringify(state.dictionary));
+            document.getElementById('dict-count').textContent = `${Object.keys(state.dictionary).length}件`;
+        }
+
+        function saveMembers() {
+            localStorage.setItem('cnic_members', JSON.stringify(state.members));
+        }
+
+        function saveAttendance() {
+            localStorage.setItem('cnic_attendance', JSON.stringify(state.attendance));
+        }
+
+        function saveTimeline() {
+            localStorage.setItem('cnic_timeline', JSON.stringify(state.timeline));
+        }
+
+        // --- 音声認識の初期化 ---
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("このブラウザは音声認識 API に対応していません。Google Chrome または Safari の最新版をご使用ください。");
+                statusText.textContent = "音声認識未対応ブラウザ";
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'ja-JP';
+
+            // 録音途中で強制終了される現象を防ぐための自動再起動ハンドラ
+            recognition.onend = () => {
+                if (state.isRecording) {
+                    console.log("Speech recognition ended unexpectedly. Restarting...");
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error("Failed to restart speech recognition:", e);
+                    }
+                }
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                // 新しい発話が始まった瞬間に「今の話者」と「開始時刻」を固定する。
+                // 発話の途中で話者ボタンをタップしても、その発話は最初に話し始めた人のまま。
+                // 切り替えは次の発話から効く（＝話し終わりの尻に次の人の名前が付く事故を防ぐ）。
+                if ((interimTranscript.trim() || finalTranscript.trim()) && state.utteranceSpeaker === null) {
+                    state.utteranceSpeaker = state.currentSpeaker;
+                    state.utteranceStartOffset = state.startTime ? (Date.now() - state.startTime) / 1000 : 0;
+                }
+
+                if (interimTranscript.trim()) {
+                    showInterimBlock(interimTranscript);
+                }
+
+                if (finalTranscript.trim()) {
+                    addFinalBlock(finalTranscript);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                if (event.error === 'not-allowed') {
+                    alert("マイクの使用が許可されていません。");
+                    stopRecording();
+                }
+            };
+
+            state.recognition = recognition;
+        }
+
+        // --- 録音・タイマーのコントロール ---
+        async function startRecording() {
+            if (state.isRecording) return;
+
+            // 前回の録音がある状態での再録音は、音声バックアップが置き換わることを確認
+            if (state.audioUrl) {
+                const ok = confirm(
+                    "新しく録音を開始すると、前回の音声バックアップは置き換わります。\n" +
+                    "これまでの発言ログ（テキスト）は残りますが、前回区間の🔊頭出し再生はできなくなります。\n\n開始しますか？"
+                );
+                if (!ok) return;
+            }
+
+            if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+                alert("このページの開き方ではマイクを使用できません。HTTPSの公開URLから開いてください。");
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                setupMediaRecorder(stream);
+            } catch (err) {
+                console.error("Error accessing microphone:", err);
+                if (err?.name === "NotAllowedError" || err?.name === "SecurityError") {
+                    alert("マイクが許可されていません。Chromeのサイト設定でマイクを「許可」にしてください。");
+                } else if (err?.name === "NotFoundError") {
+                    alert("使用できるマイクが見つかりません。端末のマイク設定を確認してください。");
+                } else {
+                    alert(`マイクへのアクセスに失敗しました（${err?.name || "不明なエラー"}）。`);
+                }
+                return;
+            }
+
+            state.isRecording = true;
+            state.startTime = Date.now();
+            state.audioChunks = [];
+            state.currentTake++;              // 録音区間IDを進める（頭出し整合性用）
+            state.utteranceSpeaker = null;     // 発話ロックをリセット
+            state.utteranceStartOffset = null;
+
+            // timeslice付きで録音（定期的にデータを確保し、途中でタブが落ちても被害を最小化）
+            state.mediaRecorder.start(1000);
+            try {
+                state.recognition.start();
+            } catch(e) {
+                console.error("Recognition start error:", e);
+            }
+
+            requestWakeLock(); // 画面消灯によるマイク停止を防ぐ
+
+            btnRec.classList.add('recording');
+            svgMic.style.display = 'none';
+            svgStop.style.display = 'inline-block';
+
+            statusDot.classList.add('active');
+            statusText.textContent = "音声認識中";
+            audioWave.classList.add('active');
+
+            startTimer();
+            checkTimelineEmpty();
+        }
+
+        function stopRecording() {
+            if (!state.isRecording) return;
+            
+            state.isRecording = false;
+            
+            if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+                state.mediaRecorder.stop();
+            }
+            if (state.recognition) {
+                state.recognition.stop();
+            }
+
+            btnRec.classList.remove('recording');
+            svgMic.style.display = 'inline-block';
+            svgStop.style.display = 'none';
+            
+            statusDot.classList.remove('active');
+            statusText.textContent = "解析完了";
+            audioWave.classList.remove('active');
+            
+            clearInterval(state.timerInterval);
+
+            if (state.mediaRecorder && state.mediaRecorder.stream) {
+                state.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+
+            releaseWakeLock();
+            removeInterimBlock();
+        }
+
+        // --- 画面消灯防止（Wake Lock） ---
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    state.wakeLock = await navigator.wakeLock.request('screen');
+                    state.wakeLock.addEventListener('release', () => {
+                        // OSの都合で解放された場合に備える（再取得はvisibilitychangeで）
+                    });
+                }
+            } catch (e) {
+                console.warn("Wake Lock を取得できませんでした:", e);
+            }
+        }
+
+        function releaseWakeLock() {
+            if (state.wakeLock) {
+                state.wakeLock.release().catch(() => {});
+                state.wakeLock = null;
+            }
+        }
+
+        // 画面を戻したときに録音中なら Wake Lock を取り直す
+        document.addEventListener('visibilitychange', () => {
+            if (state.isRecording && document.visibilityState === 'visible' && !state.wakeLock) {
+                requestWakeLock();
+            }
+        });
+
+        // 録音中の不意のタブ閉じ・リロードを警告（音声バックアップはメモリ上のため）
+        window.addEventListener('beforeunload', (e) => {
+            if (state.isRecording) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
+
+        function setupMediaRecorder(stream) {
+            const mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    state.audioChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                if (state.audioUrl) {
+                    URL.revokeObjectURL(state.audioUrl);
+                }
+                state.audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayer.src = state.audioUrl;
+                statusText.textContent = "バックアップ音声を保存しました";
+                showToast("音声をバックアップ保存しました");
+            };
+
+            state.mediaRecorder = mediaRecorder;
+        }
+
+        function startTimer() {
+            clearInterval(state.timerInterval);
+            timerDisplay.textContent = "00:00";
+            state.timerInterval = setInterval(() => {
+                const elapsedMs = Date.now() - state.startTime;
+                const totalSec = Math.floor(elapsedMs / 1000);
+                const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
+                const sec = String(totalSec % 60).padStart(2, '0');
+                timerDisplay.textContent = `${min}:${sec}`;
+            }, 1000);
+        }
+
+        btnRec.addEventListener('click', () => {
+            if (state.isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        // --- タイムライン構築・更新 ---
+        function checkTimelineEmpty() {
+            if (state.timeline.length === 0) {
+                timelineEmpty.style.display = 'flex';
+                timeline.style.display = 'none';
+            } else {
+                timelineEmpty.style.display = 'none';
+                timeline.style.display = 'flex';
+            }
+        }
+
+        function addFinalBlock(text) {
+            removeInterimBlock();
+
+            // 発話開始時点でロックした話者・時刻を使う（無ければ現在値でフォールバック）
+            const speaker = state.utteranceSpeaker || state.currentSpeaker;
+            const timeOffset = (state.utteranceStartOffset != null)
+                ? state.utteranceStartOffset
+                : (state.startTime ? (Date.now() - state.startTime) / 1000 : 0);
+
+            const blockId = 'block_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+            const rawText = text.trim();
+            const refinedText = applyCorrectionDict(rawText);
+
+            const block = {
+                id: blockId,
+                speaker: speaker,
+                rawText: rawText,
+                refinedText: refinedText,
+                timeOffset: timeOffset,
+                take: state.currentTake, // どの録音区間の音声かを記録（頭出しの整合性用）
+                timestamp: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            };
+
+            state.timeline.push(block);
+
+            // 発話ロックを解除（次の発話で改めて話者・時刻を取り直す）
+            state.utteranceSpeaker = null;
+            state.utteranceStartOffset = null;
+
+            saveTimeline();
+            renderTimeline();
+            updateMarkdownPreview();
+
+            timeline.scrollTop = timeline.scrollHeight;
+        }
+
+        function showInterimBlock(text) {
+            removeInterimBlock();
+
+            // 発話開始時にロックした話者・時刻で仮表示する（確定ブロックと一致させる）
+            const speaker = state.utteranceSpeaker || state.currentSpeaker;
+            const timeOffset = (state.utteranceStartOffset != null)
+                ? state.utteranceStartOffset
+                : (state.startTime ? (Date.now() - state.startTime) / 1000 : 0);
+            const min = String(Math.floor(timeOffset / 60)).padStart(2, '0');
+            const sec = String(Math.floor(timeOffset % 60)).padStart(2, '0');
+            const color = getSpeakerColor(speaker);
+
+            const interimHtml = `
+                <div class="block-item interim" id="interim-block" style="border-left-color: ${color};">
+                    <div class="block-header">
+                        <div class="block-meta">
+                            <span class="block-speaker-badge">${speaker} (仮)</span>
+                            <span>[${min}:${sec}]</span>
+                        </div>
+                    </div>
+                    <div class="block-body" style="color: var(--text-secondary);">${text}</div>
+                </div>
+            `;
+            timeline.insertAdjacentHTML('beforeend', interimHtml);
+            timeline.scrollTop = timeline.scrollHeight;
+        }
+
+        function removeInterimBlock() {
+            const el = document.getElementById('interim-block');
+            if (el) el.remove();
+        }
+
+        function applyCorrectionDict(text) {
+            if (!text) return text;
+
+            // 補正マップを作る。キー(誤認識語)→値(正式語) に加え、
+            // 「正式語そのもの」を自分自身にマッピングして保護する。
+            // これで、正しく認識された「標準予防策」に対して
+            // 部分キー「標準予防」が再マッチして「標準予防策策」になる事故を防ぐ。
+            const map = {};
+            for (const [raw, refined] of Object.entries(state.dictionary)) {
+                if (raw && raw.trim() !== '') map[raw] = refined;
+            }
+            for (const refined of Object.values(state.dictionary)) {
+                if (refined && refined.trim() !== '' && !(refined in map)) {
+                    map[refined] = refined; // 正式語は「そのまま」保護
+                }
+            }
+
+            // 長い語を優先マッチ（最長一致）。単一パスなので置換結果は再走査されない
+            const terms = Object.keys(map).sort((a, b) => b.length - a.length);
+            if (terms.length === 0) return text;
+
+            try {
+                const pattern = terms
+                    .map(t => t.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
+                    .join('|');
+                const regex = new RegExp(pattern, 'gi');
+                return text.replace(regex, (matched) => {
+                    if (map[matched] !== undefined) return map[matched];
+                    // 大文字小文字ゆらぎ（MRSA/mrsa等）に対応
+                    const found = terms.find(t => t.toLowerCase() === matched.toLowerCase());
+                    return found ? map[found] : matched;
+                });
+            } catch (e) {
+                console.error("辞書補正の正規表現生成エラー:", e);
+                return text;
+            }
+        }
+
+        function renderTimeline() {
+            checkTimelineEmpty();
+            const interim = document.getElementById('interim-block');
+            if (interim) interim.remove();
+
+            const html = state.timeline.map((block, idx) => {
+                const totalSec = Math.floor(block.timeOffset);
+                const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
+                const sec = String(totalSec % 60).padStart(2, '0');
+                const isCorrected = block.rawText !== block.refinedText;
+                const speakerColor = getSpeakerColor(block.speaker);
+
+                return `
+                    <div class="block-item" id="${block.id}" data-idx="${idx}" style="border-left-color: ${speakerColor};">
+                        <div class="block-header">
+                            <div class="block-meta">
+                                <span class="block-speaker-badge" onclick="openSpeakerModal('${block.id}')">${block.speaker}</span>
+                                <span class="btn-audio-jump" onclick="jumpAudioTo(${block.timeOffset}, ${block.take != null ? block.take : 'null'})" title="この発話の冒頭から音声を再生">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; fill:none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                                    [${min}:${sec}]
+                                </span>
+                                ${isCorrected ? `<span style="color: var(--accent-warning); font-size: 0.725rem; font-weight: 600; background-color: var(--accent-warning-light); border: 1px solid rgba(234, 88, 12, 0.15); padding: 0.05rem 0.35rem; border-radius: var(--radius-sm); margin-left: 0.25rem;">(自動補正適用)</span>` : ''}
+                            </div>
+                            <div class="block-actions">
+                                <button class="action-icon-btn" onclick="deleteBlock('${block.id}')" title="削除">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="fill:none;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="block-body" contenteditable="true" onblur="onBlockBodyEdit('${block.id}', this)" title="クリックして直接編集">${block.refinedText}</div>
+                        <div class="suggestion-chips" id="suggest-${block.id}"></div>
+                    </div>
+                `;
+            }).join('');
+
+            timeline.innerHTML = html;
+            checkTimelineEmpty();
+        }
+
+        function onBlockBodyEdit(blockId, element) {
+            const newText = element.innerText.trim();
+            const blockIndex = state.timeline.findIndex(b => b.id === blockId);
+            if (blockIndex === -1) return;
+
+            const block = state.timeline[blockIndex];
+            const before = block.refinedText; // 編集前に表示されていたテキスト
+
+            if (before !== newText) {
+                block.refinedText = newText;
+                saveTimeline();
+                updateMarkdownPreview();
+
+                // 編集前 → 編集後 で「変わった部分だけ」を辞書ルール候補として抽出。
+                // これで長い発言でも、直した箇所だけをピンポイントで学習提案できる。
+                const diff = computeDiffSegment(before, newText);
+                const container = document.getElementById(`suggest-${blockId}`);
+                if (diff && state.dictionary[diff.from] !== diff.to) {
+                    showLearnSuggestion(blockId, diff.from, diff.to);
+                } else if (container) {
+                    container.innerHTML = '';
+                }
+            }
+        }
+
+        // 2つの文字列の「共通の前後」を取り除き、変わった中央部分だけを返す
+        function computeDiffSegment(before, after) {
+            if (!before || !after || before === after) return null;
+            let p = 0;
+            const minLen = Math.min(before.length, after.length);
+            while (p < minLen && before[p] === after[p]) p++;
+            let s = 0;
+            while (s < (minLen - p) && before[before.length - 1 - s] === after[after.length - 1 - s]) s++;
+            const from = before.slice(p, before.length - s);
+            const to = after.slice(p, after.length - s);
+            // 純粋な挿入/削除（片方が空）は辞書ルールにしにくいので提案しない
+            if (!from || !to || from === to) return null;
+            // 断片が長すぎる（＝文全体を書き換えた等）は誤登録リスクが高いので提案しない
+            if (from.length > 15) return null;
+            return { from, to };
+        }
+
+        function showLearnSuggestion(blockId, from, to) {
+            const container = document.getElementById(`suggest-${blockId}`);
+            if (!container) return;
+            container.innerHTML = '';
+
+            const escJs = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            const chipHtml = `
+                <div class="learn-chip" onclick="learnMapping('${escJs(from)}', '${escJs(to)}', '${blockId}')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="fill:none;"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10h-10V2z"/><path d="M12 12L2.69 6.5A10 10 0 0 0 12 22V12z"/></svg>
+                    「${escHtml(from)}」➔「${escHtml(to)}」を辞書登録
+                </div>
+            `;
+            container.innerHTML = chipHtml;
+        }
+
+        function learnMapping(raw, refined, blockId) {
+            if (!raw || !refined) return;
+            
+            state.dictionary[raw] = refined;
+            saveDictionary();
+            renderDictionary();
+            
+            showToast(`辞書登録: "${raw}" ➔ "${refined}"`);
+            applyDictionaryToAllTimeline();
+
+            const container = document.getElementById(`suggest-${blockId}`);
+            if (container) container.innerHTML = '';
+        }
+
+        function applyDictionaryToAllTimeline() {
+            state.timeline.forEach(block => {
+                block.refinedText = applyCorrectionDict(block.rawText);
+            });
+            saveTimeline();
+            renderTimeline();
+            updateMarkdownPreview();
+        }
+
+        window.deleteBlock = function(blockId) {
+            if (!confirm("この発言ブロックを削除しますか？")) return;
+            state.timeline = state.timeline.filter(b => b.id !== blockId);
+            saveTimeline();
+            renderTimeline();
+            updateMarkdownPreview();
+        };
+
+        window.jumpAudioTo = function(seconds, take) {
+            if (!state.audioUrl) {
+                showToast("この発言の音声バックアップはありません（ページを再読込すると音声は消えます）");
+                return;
+            }
+            // 別の録音区間（take）の発言は、今の音声とズレるので頭出しを無効化
+            if (take != null && take !== state.currentTake) {
+                showToast("この発言は前回の録音区間のため、頭出し再生できません");
+                return;
+            }
+            // 発話冒頭の少し手前から再生すると聞き取りやすい
+            audioPlayer.currentTime = Math.max(0, seconds - 1.5);
+            audioPlayer.play();
+        };
+
+        // --- メンバー / 発言者管理機能 ---
+        function renderMembers() {
+            memberList.innerHTML = state.members.map((name, idx) => {
+                const isPresent = state.attendance[name] !== false;
+                const activeStyle = isPresent
+                    ? `border-color: var(--accent-color); background-color: var(--accent-light); color: var(--accent-color); font-weight: 700;`
+                    : `opacity: 0.55; background-color: var(--bg-tertiary); color: var(--text-muted); border-color: var(--border-color);`;
+
+                return `
+                    <div class="member-tag" style="${activeStyle}" onclick="toggleAttendance('${name}')" title="クリックで出欠トグル">
+                        <span>${name}</span>
+                        <span class="remove" onclick="event.stopPropagation(); removeMember(${idx})" title="削除">×</span>
+                    </div>
+                `;
+            }).join('');
+            
+            // 右側のクイック切り替えパネルも再描画
+            renderQuickSpeakerPanel();
+        }
+
+        window.toggleAttendance = function(name) {
+            state.attendance[name] = !state.attendance[name];
+            
+            // 欠席にされた人が現在のデフォルト話者だった場合、他の出席者に話者を移す
+            if (!state.attendance[name] && state.currentSpeaker === name) {
+                const nextPresenter = state.members.find(m => state.attendance[m]);
+                state.currentSpeaker = nextPresenter || "";
+            }
+            
+            saveAttendance();
+            renderMembers();
+        };
+
+        // クイック話者選択パネルの描画
+        function renderQuickSpeakerPanel() {
+            const quickList = document.getElementById('quick-speaker-list');
+            if (!quickList) return;
+            
+            // 安全補正
+            if (!state.attendance) state.attendance = {};
+            
+            const presentMembers = state.members.filter(name => state.attendance[name] !== false);
+            
+            if (presentMembers.length === 0) {
+                quickList.innerHTML = `<div style="font-size: 0.725rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">出席者がいません</div>`;
+                return;
+            }
+            
+            quickList.innerHTML = presentMembers.map(name => {
+                const isActive = state.currentSpeaker === name;
+                const activeClass = isActive ? 'active' : '';
+                const speakerColor = getSpeakerColor(name);
+                const borderStyle = isActive 
+                    ? '' 
+                    : `border-left: 4px solid ${speakerColor};`;
+                
+                return `
+                    <button class="btn-quick-speaker ${activeClass}" style="${borderStyle}" onclick="setDefaultSpeaker('${name}')">
+                        ${name}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function setDefaultSpeaker(name) {
+            state.currentSpeaker = name;
+            renderMembers();
+            showToast(`発言者を「${name}」に設定`);
+        }
+
+        function removeMember(idx) {
+            const name = state.members[idx];
+            state.members.splice(idx, 1);
+            delete state.attendance[name];
+            
+            if (state.currentSpeaker === name) {
+                const nextPresenter = state.members.find(m => state.attendance[m]);
+                state.currentSpeaker = nextPresenter || "";
+            }
+            saveMembers();
+            saveAttendance();
+            renderMembers();
+        }
+
+        btnAddMember.addEventListener('click', () => {
+            const name = memberName.value.trim();
+            if (name && !state.members.includes(name)) {
+                state.members.push(name);
+                state.attendance[name] = true; // 新規追加時は出席
+                saveMembers();
+                saveAttendance();
+                renderMembers();
+                memberName.value = '';
+            }
+        });
+
+        // 話者変更モーダル
+        window.openSpeakerModal = function(blockId) {
+            state.activeModalBlockId = blockId;
+            const block = state.timeline.find(b => b.id === blockId);
+            
+            modalSpeakerList.innerHTML = state.members.map(name => `
+                <div class="modal-list-item" onclick="selectSpeaker('${name}')">
+                    <span>${name}</span>
+                    <span>${block && block.speaker === name ? '✓' : ''}</span>
+                </div>
+            `).join('');
+            
+            speakerModal.classList.add('open');
+        };
+
+        window.selectSpeaker = function(name) {
+            const blockId = state.activeModalBlockId;
+            const block = state.timeline.find(b => b.id === blockId);
+            if (block) {
+                block.speaker = name;
+                saveTimeline();
+                renderTimeline();
+                updateMarkdownPreview();
+                renderQuickSpeakerPanel(); // クイックパネル同期
+            }
+            speakerModal.classList.remove('open');
+        };
+
+        btnCloseModal.addEventListener('click', () => {
+            speakerModal.classList.remove('open');
+        });
+
+        // --- 辞書リストの描画と追加・削除 ---
+        function renderDictionary() {
+            const sortedKeys = Object.keys(state.dictionary).sort();
+            dictList.innerHTML = sortedKeys.map(key => `
+                <tr>
+                    <td style="color: var(--text-primary); font-weight: 600;">${key}</td>
+                    <td style="font-weight: 700; color: var(--accent-color);">${state.dictionary[key]}</td>
+                    <td style="text-align: right;">
+                        <button class="btn-danger" style="padding: 0.15rem 0.4rem; font-size: 0.7rem; border-radius: var(--radius-sm);" onclick="deleteDictKey('${key}')">削除</button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            saveDictionary();
+        }
+
+        window.deleteDictKey = function(key) {
+            if (confirm(`「${key}」の補正ルールを削除しますか？`)) {
+                delete state.dictionary[key];
+                saveDictionary();
+                renderDictionary();
+            }
+        };
+
+        btnAddDict.addEventListener('click', () => {
+            const raw = dictRaw.value.trim();
+            const refined = dictRefined.value.trim();
+
+            if (raw && refined) {
+                if (raw === refined) {
+                    showToast("誤認識語と補正語が同じです（登録不要）");
+                    return;
+                }
+                state.dictionary[raw] = refined;
+                saveDictionary();
+                renderDictionary();
+                dictRaw.value = '';
+                dictRefined.value = '';
+                showToast("辞書に単語を追加");
+                applyDictionaryToAllTimeline();
+            }
+        });
+
+        // --- 確定議事録（Markdown）の自動作成と出力 ---
+        function updateMarkdownPreview() {
+            if (state.timeline.length === 0) {
+                previewOutput.textContent = "※録音終了後、または文字起こしが行われると、ここに整形された議事録用テキストがリアルタイムで作成されます。";
+                return;
+            }
+
+            const present = state.members.filter(m => state.attendance[m] !== false);
+            const absent = state.members.filter(m => state.attendance[m] === false);
+
+            let md = `## 院内感染対策委員会 議事録\n\n`;
+            md += `*   **作成日時**: ${new Date().toLocaleDateString('ja-JP')} ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}\n`;
+            md += `*   **出席**: ${present.join('、') || '（なし）'}\n`;
+            if (absent.length) {
+                md += `*   **欠席**: ${absent.join('、')}\n`;
+            }
+            md += `\n### --- 発言ログ ---\n\n`;
+
+            state.timeline.forEach(block => {
+                const totalSec = Math.floor(block.timeOffset);
+                const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
+                const sec = String(totalSec % 60).padStart(2, '0');
+                
+                md += `**[${min}:${sec}] ${block.speaker}**:\n${block.refinedText}\n\n`;
+            });
+
+            previewOutput.textContent = md;
+        }
+
+        // --- コピー機能 ---
+        btnCopy.addEventListener('click', () => {
+            const text = previewOutput.textContent;
+            if (state.timeline.length === 0 || text.startsWith("※")) {
+                alert("コピーするテキストがありません。");
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("クリップボードにコピーしました");
+            }).catch(err => {
+                console.error("Copy failed:", err);
+            });
+        });
+
+        // --- AI清書プロンプト付きコピー（Claudeに貼るだけで正式な議事録に整う） ---
+        const AI_CLEANUP_PROMPT =
+`あなたは院内感染対策委員会の書記です。以下は会議の音声認識による発言ログ（下書き）です。これを正式な議事録に清書してください。
+
+# 指示
+- 話し言葉を書き言葉に整え、言い淀み・重複・相づちを削る（発言の意味や結論は変えない）
+- 次の見出しで再構成する:
+  1. 会議概要（日時・出席者・欠席者）
+  2. 議題ごとの要点
+  3. 決定事項
+  4. 宿題・ToDo（分かる範囲で担当者と期限を明記）
+  5. 次回への申し送り・継続審議事項
+- 聞き取れていない/意味が不明な箇所は勝手に補わず [要確認] と付す。事実を創作しない
+- 患者氏名・職員の実名など個人情報が実名で残っていたら、A氏・B病棟の患者 のように伏せ字にする
+- 出力はそのまま提出できるMarkdown形式で
+
+# 発言ログ（下書き）
+`;
+
+        document.getElementById('btn-copy-ai').addEventListener('click', () => {
+            const text = previewOutput.textContent;
+            if (state.timeline.length === 0 || text.startsWith("※")) {
+                alert("コピーするテキストがありません。");
+                return;
+            }
+            const payload = AI_CLEANUP_PROMPT + "\n" + text;
+            navigator.clipboard.writeText(payload).then(() => {
+                showToast("AI清書プロンプト付きでコピー。Claude等に貼るだけで清書できます");
+            }).catch(err => {
+                console.error("Copy failed:", err);
+            });
+        });
+
+        function showToast(message) {
+            toastText.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // --- 全クリアボタン ---
+        btnClearAll.addEventListener('click', () => {
+            if (confirm("現在のタイムラインと録音音声のデータをすべて削除しますか？ (辞書データやメンバー設定は消えません)")) {
+                state.timeline = [];
+                state.audioChunks = [];
+                if (state.audioUrl) {
+                    URL.revokeObjectURL(state.audioUrl);
+                    state.audioUrl = null;
+                }
+                audioPlayer.src = '';
+                timerDisplay.textContent = "00:00";
+                
+                saveTimeline();
+                renderTimeline();
+                updateMarkdownPreview();
+                showToast("データをクリアしました");
+            }
+        });
+
+        // --- 設定のインポート/エクスポート ---
+        btnImportSettings.addEventListener('click', () => {
+            const action = prompt("設定の操作を選択してください:\n1: 設定(辞書/メンバー/出欠状況)のエクスポート\n2: 設定のインポート", "1");
+            
+            if (action === "1") {
+                const exportData = {
+                    dictionary: state.dictionary,
+                    members: state.members,
+                    attendance: state.attendance
+                };
+                navigator.clipboard.writeText(JSON.stringify(exportData, null, 2)).then(() => {
+                    alert("設定データをクリップボードにコピーしました。");
+                });
+            } else if (action === "2") {
+                const jsonStr = prompt("エクスポートした設定データ(JSON)を貼り付けてください:");
+                if (jsonStr) {
+                    try {
+                        const importData = JSON.parse(jsonStr);
+                        if (importData.dictionary && importData.members) {
+                            state.dictionary = importData.dictionary;
+                            state.members = importData.members;
+                            state.attendance = importData.attendance || {};
+                            
+                            // 出欠データがない場合の補正
+                            state.members.forEach(name => {
+                                if (state.attendance[name] === undefined) {
+                                    state.attendance[name] = true;
+                                }
+                            });
+                            
+                            saveDictionary();
+                            saveMembers();
+                            saveAttendance();
+                            renderDictionary();
+                            renderMembers();
+                            alert("設定データのインポートに成功しました！");
+                        } else {
+                            alert("データフォーマットが正しくありません。");
+                        }
+                    } catch(e) {
+                        alert("JSONの解析に失敗しました。");
+                    }
+                }
+            }
+        });
+
+        // PWA サービスワーカーの登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then((reg) => console.log('ServiceWorker registered:', reg.scope))
+                    .catch((err) => console.error('ServiceWorker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
