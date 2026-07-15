@@ -1222,7 +1222,9 @@
             utteranceSpeaker: null,
             utteranceStartOffset: null,
             currentTake: 0,       // 録音区間ID（再録音のたびに増える）
-            wakeLock: null
+            wakeLock: null,
+            recognitionTrack: null, // 録音と端末内音声認識で共有する音声トラック
+            recognitionFailed: false
         };
 
         // デフォルト辞書（初期データ）
@@ -1468,10 +1470,14 @@
         }
 
         // --- 音声認識の初期化 ---
+        function getSpeechRecognitionCtor() {
+            return window.SpeechRecognition || window.webkitSpeechRecognition;
+        }
+
         function initSpeechRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SpeechRecognition = getSpeechRecognitionCtor();
             if (!SpeechRecognition) {
-                alert("このブラウザは音声認識 API に対応していません。Google Chrome または Safari の最新版をご使用ください。");
+                alert("このブラウザは音声認識 API に対応していません。Android版Google Chromeの最新版をご使用ください。");
                 statusText.textContent = "音声認識未対応ブラウザ";
                 return;
             }
@@ -1481,15 +1487,29 @@
             recognition.interimResults = true;
             recognition.lang = 'ja-JP';
 
-            // 録音途中で強制終了される現象を防ぐための自動再起動ハンドラ
+            // 患者・職員情報を外部の音声認識サービスへ送らないため、端末内処理を必須にする。
+            if ('processLocally' in recognition) {
+                recognition.processLocally = true;
+            }
+
+            recognition.onstart = () => {
+                state.recognitionFailed = false;
+                statusText.textContent = "端末内で音声認識中";
+            };
+
+            // 長い無音などで認識が終了しても、録音中は同じ音声トラックで再開する。
             recognition.onend = () => {
-                if (state.isRecording) {
-                    console.log("Speech recognition ended unexpectedly. Restarting...");
-                    try {
-                        recognition.start();
-                    } catch (e) {
-                        console.error("Failed to restart speech recognition:", e);
-                    }
+                if (state.isRecording && !state.recognitionFailed &&
+                    state.recognitionTrack?.readyState === 'live') {
+                    setTimeout(() => {
+                        if (!state.isRecording || state.recognitionFailed ||
+                            state.recognitionTrack?.readyState !== 'live') return;
+                        try {
+                            recognition.start(state.recognitionTrack);
+                        } catch (e) {
+                            console.error("Failed to restart local speech recognition:", e);
+                        }
+                    }, 250);
                 }
             };
 
@@ -1505,9 +1525,6 @@
                     }
                 }
 
-                // 新しい発話が始まった瞬間に「今の話者」と「開始時刻」を固定する。
-                // 発話の途中で話者ボタンをタップしても、その発話は最初に話し始めた人のまま。
-                // 切り替えは次の発話から効く（＝話し終わりの尻に次の人の名前が付く事故を防ぐ）。
                 if ((interimTranscript.trim() || finalTranscript.trim()) && state.utteranceSpeaker === null) {
                     state.utteranceSpeaker = state.currentSpeaker;
                     state.utteranceStartOffset = state.startTime ? (Date.now() - state.startTime) / 1000 : 0;
@@ -1523,14 +1540,86 @@
             };
 
             recognition.onerror = (event) => {
-                console.error("Speech recognition error:", event.error);
-                if (event.error === 'not-allowed') {
-                    alert("マイクの使用が許可されていません。");
-                    stopRecording();
-                }
+                console.error("Local speech recognition error:", event.error, event.message || "");
+
+                // 無音とユーザー操作による停止は異常ではない。onendから必要に応じて再開する。
+                if (event.error === 'no-speech' || event.error === 'aborted') return;
+
+                state.recognitionFailed = true;
+                const messages = {
+                    'audio-capture': "音声認識がマイク音声を受け取れませんでした。Chromeを最新版に更新して、もう一度お試しください。",
+                    'network': "端末内音声モデルの準備に失敗しました。通信環境を確認し、日本語モデルを再取得してください。",
+                    'not-allowed': "音声認識が許可されていません。Chromeのサイト設定でマイクを許可してください。",
+                    'service-not-allowed': "この端末では日本語の端末内音声認識を利用できません。",
+                    'language-not-supported': "この端末の音声認識は日本語に対応していません。"
+                };
+                const message = messages[event.error] || `端末内音声認識に失敗しました（${event.error || "不明なエラー"}）。`;
+
+                if (state.isRecording) stopRecording();
+                statusText.textContent = "音声認識エラー";
+                alert(message);
             };
 
             state.recognition = recognition;
+        }
+
+        async function ensureLocalSpeechRecognition() {
+            const SpeechRecognition = getSpeechRecognitionCtor();
+            const recognition = state.recognition;
+
+            if (!SpeechRecognition || !recognition ||
+                !('processLocally' in recognition) ||
+                typeof SpeechRecognition.available !== 'function' ||
+                typeof SpeechRecognition.install !== 'function') {
+                alert("このChromeは端末内音声認識に対応していません。Chrome 139以降へ更新してください。外部送信を防ぐため、クラウド音声認識には切り替えません。");
+                statusText.textContent = "端末内音声認識に未対応";
+                return false;
+            }
+
+            const options = { langs: ['ja-JP'], processLocally: true };
+
+            try {
+                let availability = await SpeechRecognition.available(options);
+
+                if (availability === 'available') {
+                    recognition.processLocally = true;
+                    return true;
+                }
+
+                if (availability === 'downloadable' || availability === 'downloading') {
+                    if (availability === 'downloadable') {
+                        const ok = confirm(
+                            "初回のみ、日本語の端末内音声認識モデルをダウンロードします。\n" +
+                            "音声と文字起こしを外部へ送らず、端末内で処理するために必要です。\n\n開始しますか？"
+                        );
+                        if (!ok) {
+                            statusText.textContent = "日本語モデル未導入";
+                            return false;
+                        }
+                    }
+
+                    statusText.textContent = "日本語モデルを準備中";
+                    const installed = await SpeechRecognition.install(options);
+                    if (installed) {
+                        recognition.processLocally = true;
+                        showToast("日本語の端末内音声モデルを準備しました");
+                        return true;
+                    }
+
+                    alert("日本語の端末内音声モデルを準備できませんでした。通信環境と端末の空き容量を確認してください。");
+                    statusText.textContent = "日本語モデル準備失敗";
+                    return false;
+                }
+
+                alert("この端末では日本語の端末内音声認識を利用できません。Chromeを最新版に更新してください。");
+                statusText.textContent = "日本語モデル利用不可";
+                return false;
+            } catch (error) {
+                console.error("Local speech model setup error:", error);
+                alert(`端末内音声認識の準備に失敗しました（${error?.name || "不明なエラー"}）。`);
+                statusText.textContent = "音声認識準備エラー";
+                return false;
+            }
         }
 
         // --- 録音・タイマーのコントロール ---
@@ -1551,8 +1640,11 @@
                 return;
             }
 
+            if (!await ensureLocalSpeechRecognition()) return;
+
+            let stream;
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 setupMediaRecorder(stream);
             } catch (err) {
                 console.error("Error accessing microphone:", err);
@@ -1569,26 +1661,43 @@
             state.isRecording = true;
             state.startTime = Date.now();
             state.audioChunks = [];
-            state.currentTake++;              // 録音区間IDを進める（頭出し整合性用）
-            state.utteranceSpeaker = null;     // 発話ロックをリセット
+            state.currentTake++;
+            state.utteranceSpeaker = null;
             state.utteranceStartOffset = null;
+            state.recognitionFailed = false;
+            state.recognitionTrack = stream.getAudioTracks()[0] || null;
 
-            // timeslice付きで録音（定期的にデータを確保し、途中でタブが落ちても被害を最小化）
-            state.mediaRecorder.start(1000);
-            try {
-                state.recognition.start();
-            } catch(e) {
-                console.error("Recognition start error:", e);
+            if (!state.recognitionTrack) {
+                state.isRecording = false;
+                stream.getTracks().forEach(track => track.stop());
+                alert("マイクの音声トラックを取得できませんでした。");
+                return;
             }
 
-            requestWakeLock(); // 画面消灯によるマイク停止を防ぐ
+            try {
+                // 1本の音声トラックを録音と認識へ共有し、Androidでのマイク競合を防ぐ。
+                state.recognition.start(state.recognitionTrack);
+                state.mediaRecorder.start(1000);
+            } catch (error) {
+                console.error("Failed to start recording and local recognition:", error);
+                state.recognitionFailed = true;
+                state.isRecording = false;
+                try { state.recognition.abort(); } catch (_) {}
+                stream.getTracks().forEach(track => track.stop());
+                state.recognitionTrack = null;
+                alert("録音と端末内音声認識を開始できませんでした。Chromeを最新版に更新してください。");
+                statusText.textContent = "開始エラー";
+                return;
+            }
+
+            requestWakeLock();
 
             btnRec.classList.add('recording');
             svgMic.style.display = 'none';
             svgStop.style.display = 'inline-block';
 
             statusDot.classList.add('active');
-            statusText.textContent = "音声認識中";
+            statusText.textContent = "端末内音声認識を開始中";
             audioWave.classList.add('active');
 
             startTimer();
@@ -1620,6 +1729,7 @@
             if (state.mediaRecorder && state.mediaRecorder.stream) {
                 state.mediaRecorder.stream.getTracks().forEach(track => track.stop());
             }
+            state.recognitionTrack = null;
 
             releaseWakeLock();
             removeInterimBlock();
