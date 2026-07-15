@@ -1,0 +1,11 @@
+{
+  "name": "CNIC 議事録支援システム - 凪",
+  "short_name": "凪議事録",
+  "description": "端末内保存のCNIC議事録支援アプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#d97706",
+  "lang": "ja"
+}
